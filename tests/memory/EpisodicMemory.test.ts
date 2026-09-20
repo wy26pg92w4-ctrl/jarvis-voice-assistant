@@ -46,6 +46,17 @@ describe("EpisodicMemory", () => {
     expect(summarizer).toHaveBeenCalledTimes(2);
   });
 
+  it("does not let a blank summarizer reply wipe out the accumulated summary", async () => {
+    const summarizer = vi.fn().mockResolvedValueOnce("Wichtige Zusammenfassung A").mockResolvedValueOnce("   ");
+    const memory = new EpisodicMemory(1, summarizer);
+
+    for (let i = 0; i < 6; i++) {
+      await memory.add(i % 2 === 0 ? "user" : "assistant", `msg ${i}`);
+    }
+
+    expect(memory.getSummary()).toContain("Wichtige Zusammenfassung A");
+  });
+
   it("falls back to the heuristic summary when the summarizer throws", async () => {
     const summarizer = vi.fn().mockRejectedValue(new Error("gateway down"));
     const memory = new EpisodicMemory(1, summarizer);

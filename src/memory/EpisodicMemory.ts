@@ -51,7 +51,14 @@ export class EpisodicMemory {
         const context = this.summary
           ? [{ role: "system" as const, content: `Bisherige Zusammenfassung: ${this.summary}` }, ...overflow]
           : overflow;
-        return await this.summarizer(context);
+        const summarized = await this.summarizer(context);
+        if (summarized.trim().length === 0) {
+          // A blank reply is not a valid "complete updated summary" — trusting
+          // it would silently erase everything accumulated so far. Treat it
+          // like a failure and fall through to the additive heuristic below.
+          throw new Error("summarizer returned a blank summary");
+        }
+        return summarized;
       } catch {
         // Gateway unreachable or malformed reply: degrade to the heuristic below.
       }
