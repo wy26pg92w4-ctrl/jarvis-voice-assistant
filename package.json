@@ -1,0 +1,26 @@
+{
+  "name": "jarvis-voice-assistant",
+  "version": "0.1.0",
+  "description": "Jarvis brain: dialog orchestrator, skills and memory, backed by OmniRoute as the multi-provider LLM gateway.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
