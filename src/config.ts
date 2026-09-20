@@ -31,7 +31,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): JarvisConfig {
     memoryTurns: readInt(env.JARVIS_MEMORY_TURNS, 20),
     systemPrompt:
       env.JARVIS_SYSTEM_PROMPT ??
-      "Du bist Jarvis, ein hilfsbereiter Sprachassistent. Antworte kurz und klar auf Deutsch, außer der Nutzer wechselt die Sprache.",
+      "Du bist Jarvis, ein aufgabenorientierter Sprachassistent. Antworte so kurz wie möglich " +
+        "(idealerweise ein bis zwei Sätze) auf Deutsch, außer der Nutzer wechselt die Sprache. " +
+        "Keine Füllsätze, keine Erklärungen, die nicht gefragt wurden, keine Höflichkeitsfloskeln. " +
+        "Konzentriere dich auf das Erledigen der Aufgabe statt auf Small Talk: wenn eine Aktion " +
+        "möglich ist, führe sie aus oder sag konkret, was dafür fehlt, statt nur zu reden.",
     dataDir,
     factsFile: path.join(dataDir, "facts.json"),
     remindersFile: path.join(dataDir, "reminders.json"),
