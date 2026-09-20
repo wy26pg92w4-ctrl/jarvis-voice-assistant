@@ -10,6 +10,11 @@ export interface JarvisConfig {
   dataDir: string;
   factsFile: string;
   remindersFile: string;
+  obsidian?: {
+    vaultPath: string;
+    restUrl?: string;
+    restApiKey?: string;
+  };
 }
 
 function readInt(value: string | undefined, fallback: number): number {
@@ -30,5 +35,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): JarvisConfig {
     dataDir,
     factsFile: path.join(dataDir, "facts.json"),
     remindersFile: path.join(dataDir, "reminders.json"),
+    obsidian: env.JARVIS_OBSIDIAN_VAULT_PATH
+      ? {
+          vaultPath: env.JARVIS_OBSIDIAN_VAULT_PATH,
+          restUrl: env.JARVIS_OBSIDIAN_REST_URL || undefined,
+          restApiKey: env.JARVIS_OBSIDIAN_REST_API_KEY || undefined,
+        }
+      : undefined,
   };
 }

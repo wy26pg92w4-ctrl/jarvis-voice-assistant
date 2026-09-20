@@ -6,6 +6,12 @@ import { EpisodicMemory, type Summarizer } from "./memory/EpisodicMemory.js";
 import { LongTermMemory } from "./memory/LongTermMemory.js";
 import { ReminderStore } from "./memory/ReminderStore.js";
 import { MemoryManager } from "./memory/MemoryManager.js";
+import { ObsidianSync } from "./obsidian/ObsidianSync.js";
+import { ObsidianRestClient } from "./obsidian/RestClient.js";
+import { SyncedEpisodicMemory } from "./obsidian/SyncedEpisodicMemory.js";
+import { SyncedLongTermMemory } from "./obsidian/SyncedLongTermMemory.js";
+import { SyncedReminderStore } from "./obsidian/SyncedReminderStore.js";
+import { VaultWriter } from "./obsidian/VaultWriter.js";
 import { SkillRegistry } from "./skills/SkillRegistry.js";
 import { timeSkill } from "./skills/builtin/timeSkill.js";
 import { createHelpSkill } from "./skills/builtin/helpSkill.js";
@@ -15,6 +21,7 @@ import {
   createRememberSkill,
   createRemindSkill,
 } from "./skills/builtin/memorySkills.js";
+import { createImportFromObsidianSkill } from "./skills/builtin/obsidianImportSkill.js";
 import { Brain } from "./brain/Brain.js";
 
 function createOmniRouteSummarizer(llm: OmniRouteClient): Summarizer {
@@ -32,12 +39,35 @@ function createOmniRouteSummarizer(llm: OmniRouteClient): Summarizer {
   };
 }
 
-function buildBrain(): Brain {
+interface App {
+  brain: Brain;
+  longTerm: LongTermMemory;
+  obsidianSync?: ObsidianSync;
+}
+
+function buildApp(): App {
   const config = loadConfig();
   const llm = new OmniRouteClient(config.omniRouteBaseUrl, config.omniRouteApiKey, config.model);
-  const episodic = new EpisodicMemory(config.memoryTurns, createOmniRouteSummarizer(llm));
-  const longTerm = new LongTermMemory(config.factsFile);
-  const reminders = new ReminderStore(config.remindersFile);
+  const summarizer = createOmniRouteSummarizer(llm);
+
+  const obsidianSync = config.obsidian
+    ? new ObsidianSync(
+        new VaultWriter(config.obsidian.vaultPath),
+        config.obsidian.restUrl && config.obsidian.restApiKey
+          ? new ObsidianRestClient(config.obsidian.restUrl, config.obsidian.restApiKey)
+          : undefined,
+      )
+    : undefined;
+
+  const episodic = obsidianSync
+    ? new SyncedEpisodicMemory(config.memoryTurns, summarizer, obsidianSync)
+    : new EpisodicMemory(config.memoryTurns, summarizer);
+  const longTerm = obsidianSync
+    ? new SyncedLongTermMemory(config.factsFile, obsidianSync)
+    : new LongTermMemory(config.factsFile);
+  const reminders = obsidianSync
+    ? new SyncedReminderStore(config.remindersFile, obsidianSync)
+    : new ReminderStore(config.remindersFile);
   const memory = new MemoryManager(episodic, longTerm, reminders);
 
   const skills = new SkillRegistry();
@@ -46,13 +76,28 @@ function buildBrain(): Brain {
   skills.register(createForgetSkill(longTerm));
   skills.register(createRecallSkill(longTerm));
   skills.register(createRemindSkill(reminders));
+  if (obsidianSync) {
+    skills.register(createImportFromObsidianSkill(longTerm, obsidianSync));
+  }
   skills.register(createHelpSkill(skills));
 
-  return new Brain(llm, memory, skills, config.systemPrompt);
+  const brain = new Brain(llm, memory, skills, config.systemPrompt);
+  return { brain, longTerm, obsidianSync };
 }
 
 async function main(): Promise<void> {
-  const brain = buildBrain();
+  const { brain, longTerm, obsidianSync } = buildApp();
+
+  if (obsidianSync) {
+    const imported = await obsidianSync.importFactsFromVault();
+    for (const fact of imported) {
+      if (fact.key && fact.value) {
+        await longTerm.remember(fact.key, fact.value);
+      }
+    }
+    console.log(`Obsidian-Anbindung aktiv (${imported.length} Fakt(en) beim Start eingelesen).`);
+  }
+
   const rl = readline.createInterface({ input: stdin, output: stdout });
 
   console.log("Jarvis-Gehirn bereit. Tippe eine Nachricht (oder 'exit' zum Beenden).");

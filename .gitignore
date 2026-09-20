@@ -8,3 +8,6 @@
 node_modules/
 dist/
 .env
+
+# Laufzeitdaten (Fakten/Erinnerungen), Standardpfad aus JARVIS_DATA_DIR
+data/

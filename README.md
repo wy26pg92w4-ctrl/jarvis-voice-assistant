@@ -46,6 +46,12 @@ Text-Input → Brain
 - **OmniRouteClient** (`src/llm/OmniRouteClient.ts`) — schlanker Client für
   die OpenAI-kompatible `/chat/completions`-Schnittstelle von
   [OmniRoute](https://github.com/diegosouzapw/OmniRoute).
+- **Obsidian-Anbindung** (`src/obsidian`, optional) — spiegelt Fakten,
+  Erinnerungen und Gesprächs-Zusammenfassungen als verlinkte Markdown-Notizen
+  in einen Obsidian-Vault, siehe [unten](#obsidian-anbindung). Implementiert
+  als `Synced*`-Wrapper um `LongTermMemory`/`ReminderStore`/`EpisodicMemory`
+  (extends, kein Eingriff in die Kernklassen) plus `ObsidianSync`
+  (Datei-Export immer, Live-Push über die Local-REST-API optional).
 
 ### Warum OmniRoute als LLM-Gateway?
 
@@ -108,6 +114,55 @@ Jarvis holt sich Antworten ab sofort über OmniRoute vom Hermes-Modell statt
 vom bisherigen (per `auto` gewählten) Modell — Brain, Skills und Gedächtnis
 bleiben unverändert, da sie ausschließlich gegen die OpenAI-kompatible
 Schnittstelle von OmniRoute sprechen.
+
+## Obsidian-Anbindung
+
+Fakten, Erinnerungen und Gesprächs-Zusammenfassungen lassen sich als
+verlinkte Markdown-Notizen in einen Obsidian-Vault spiegeln. Aktivierung
+über eine einzige Variable in `.env`:
+
+```bash
+JARVIS_OBSIDIAN_VAULT_PATH=/pfad/zu/deinem/Obsidian-Vault
+```
+
+Das genügt bereits vollständig — Obsidian muss dafür nicht laufen, es liest
+beim nächsten Öffnen einfach die Dateien vom Datenträger:
+
+- `Jarvis/Fakten/<fakt>.md` — eine Notiz pro gespeichertem Fakt
+- `Jarvis/Erinnerungen/<erinnerung>.md` — eine Notiz pro Erinnerung, mit
+  Checkbox (`- [ ]` / `- [x]` nach Auslösen)
+- `Jarvis/Journal/<YYYY-MM-DD>.md` — tägliche Gesprächs-Zusammenfassungen
+  (angehängt, sobald `EpisodicMemory` eine neue Zusammenfassung erzeugt)
+- `Jarvis/Jarvis Gedächtnis.md` — automatisch gepflegte Übersichtsnotiz
+  (MOC), die alle Fakten und Erinnerungen per `[[Wikilink]]` verlinkt; jede
+  Fakt-/Erinnerungsnotiz verlinkt umgekehrt auf diese Übersicht zurück
+
+**Rückrichtung (Vault → Jarvis):** Von Hand angelegte oder bearbeitete
+Fakten-Notizen im `Jarvis/Fakten/`-Ordner werden beim Start automatisch
+eingelesen, und jederzeit erneut per Skill:
+
+```
+importiere aus obsidian
+```
+
+**Optional: Live-Sync über die "Local REST API"-Plugin** — falls Änderungen
+sofort in einer bereits geöffneten Obsidian-App sichtbar sein sollen, ohne
+dass sie die Datei neu einliest:
+
+1. In Obsidian das Community-Plugin **Local REST API**
+   ([obsidian-local-rest-api](https://github.com/coddingtonbear/obsidian-local-rest-api))
+   installieren und aktivieren; einen API-Key generieren.
+2. In `.env`:
+
+   ```bash
+   JARVIS_OBSIDIAN_REST_URL=http://127.0.0.1:27123   # Klartext-Port des Plugins, kein Zertifikatsproblem
+   JARVIS_OBSIDIAN_REST_API_KEY=<Key aus dem Plugin>
+   ```
+
+Die Vault-Dateien bleiben in jedem Fall die Wahrheitsquelle; ein
+unerreichbares oder falsch konfiguriertes REST-Backend lässt den Push
+einfach fehlschlagen (geloggt, nicht geworfen) — Jarvis' Kernfunktionen
+sind davon nie betroffen.
 
 ## Tests
 
