@@ -80,4 +80,20 @@ describe("JsonFileStore", () => {
     expect(final).toHaveLength(20);
     expect(new Set(final)).toEqual(new Set(Array.from({ length: 20 }, (_, i) => i)));
   });
+
+  it("documents that two instances on the same path clobber each other via stale caches", async () => {
+    // Pins the invariant called out in the class docstring: exactly one
+    // JsonFileStore per file path for the process lifetime. If this ever
+    // starts passing with equality instead, the cache was made
+    // cross-instance-aware and the docstring warning should be removed.
+    const first = new JsonFileStore<string[]>(filePath, []);
+    const second = new JsonFileStore<string[]>(filePath, []);
+
+    await first.write(["from-first"]);
+    await second.write(["from-second"]);
+
+    expect(await first.read()).toEqual(["from-first"]);
+    expect(await second.read()).toEqual(["from-second"]);
+    expect(await first.read()).not.toEqual(await second.read());
+  });
 });

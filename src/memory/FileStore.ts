@@ -15,6 +15,18 @@ import path from "node:path";
  * once per process lifetime instead of on every call — this matters once a
  * store holds thousands of records (each write is still O(n) to serialize
  * the whole file, but the redundant read+parse before it is not).
+ *
+ * Because of that cache, exactly one JsonFileStore instance must own a
+ * given file path for the lifetime of the process (which is how every
+ * caller in this codebase already uses it, one per LongTermMemory/
+ * ReminderStore instance). A second instance on the same path would not
+ * see the first one's writes and would silently clobber them on its own
+ * next write, with no error — this is a stronger hazard than the general
+ * multi-process caveat above, since it fires even with no real
+ * concurrency. A future scheduler process must therefore either share the
+ * app's existing store instances in-process, or run out-of-process and go
+ * through a real IPC/lock mechanism rather than a second store on the
+ * same file.
  */
 export class JsonFileStore<T> {
   private queue: Promise<unknown> = Promise.resolve();
