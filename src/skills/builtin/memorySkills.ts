@@ -17,6 +17,11 @@ const UNIT_TO_MS: Record<string, number> = {
   stunden: 3_600_000,
 };
 
+// Generous but finite: keeps Date arithmetic within the safe integer /
+// valid-Date range no matter how many digits the user (or a malformed
+// upstream transcription) types, e.g. "in 99999999999999999999 minuten".
+const MAX_REMINDER_OFFSET_MS = 365 * 24 * 60 * 60 * 1000 * 10; // 10 Jahre
+
 export function createRememberSkill(longTerm: LongTermMemory): Skill {
   return {
     name: "remember",
@@ -83,7 +88,11 @@ export function createRemindSkill(reminders: ReminderStore): Skill {
       const amount = Number(match[1]);
       const unit = match[2].toLowerCase();
       const message = match[3].trim();
-      const dueAt = new Date(Date.now() + amount * UNIT_TO_MS[unit]);
+      const offsetMs = amount * UNIT_TO_MS[unit];
+      if (!Number.isFinite(offsetMs) || offsetMs > MAX_REMINDER_OFFSET_MS) {
+        return "Das ist zu weit in der Zukunft — sag mir einen Zeitraum bis zu 10 Jahren.";
+      }
+      const dueAt = new Date(Date.now() + offsetMs);
       await reminders.createTimeReminder(message, dueAt);
       return `Okay, ich erinnere dich am ${dueAt.toLocaleString("de-DE")} an: ${message}`;
     },

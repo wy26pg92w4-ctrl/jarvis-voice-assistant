@@ -73,4 +73,12 @@ describe("memory skills", () => {
     expect(dueAt).toBeGreaterThanOrEqual(before + 10 * 60_000 - 1000);
     expect(dueAt).toBeLessThanOrEqual(before + 10 * 60_000 + 5000);
   });
+
+  it("remind skill rejects an absurdly large offset instead of crashing on an invalid date", async () => {
+    const skill = createRemindSkill(reminders);
+    const reply = await skill.handle("erinnere mich in 99999999999999999999 minuten an test");
+
+    expect(reply).not.toContain("Invalid");
+    expect(await reminders.list()).toHaveLength(0);
+  });
 });
