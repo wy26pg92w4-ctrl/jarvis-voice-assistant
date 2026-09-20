@@ -9,9 +9,17 @@ import path from "node:path";
  * update gets lost. Use `update()` for any read-modify-write; it queues the
  * whole cycle as one unit. This does not protect against multiple processes
  * writing the same file.
+ *
+ * The parsed value is cached in memory after the first access and kept in
+ * sync on every write, so repeated operations only pay for a disk read
+ * once per process lifetime instead of on every call — this matters once a
+ * store holds thousands of records (each write is still O(n) to serialize
+ * the whole file, but the redundant read+parse before it is not).
  */
 export class JsonFileStore<T> {
   private queue: Promise<unknown> = Promise.resolve();
+  private cache: T | undefined;
+  private cacheLoaded = false;
 
   constructor(
     private readonly filePath: string,
@@ -19,19 +27,19 @@ export class JsonFileStore<T> {
   ) {}
 
   async read(): Promise<T> {
-    return this.enqueue(() => this.readInternal());
+    return this.enqueue(async () => this.cloneValue(await this.loadCache()));
   }
 
   async write(value: T): Promise<void> {
-    return this.enqueue(() => this.writeInternal(value));
+    return this.enqueue(() => this.persist(value));
   }
 
   /** Atomically reads the current value, applies `mutator`, and persists the result. */
   async update(mutator: (current: T) => T | Promise<T>): Promise<T> {
     return this.enqueue(async () => {
-      const current = await this.readInternal();
+      const current = await this.loadCache();
       const next = await mutator(current);
-      await this.writeInternal(next);
+      await this.persist(next);
       return next;
     });
   }
@@ -43,6 +51,20 @@ export class JsonFileStore<T> {
       () => undefined,
     );
     return result;
+  }
+
+  private async loadCache(): Promise<T> {
+    if (!this.cacheLoaded) {
+      this.cache = await this.readInternal();
+      this.cacheLoaded = true;
+    }
+    return this.cache as T;
+  }
+
+  private async persist(value: T): Promise<void> {
+    await this.writeInternal(value);
+    this.cache = value;
+    this.cacheLoaded = true;
   }
 
   private async readInternal(): Promise<T> {
@@ -80,6 +102,10 @@ export class JsonFileStore<T> {
   }
 
   private cloneDefault(): T {
-    return JSON.parse(JSON.stringify(this.defaultValue)) as T;
+    return this.cloneValue(this.defaultValue);
+  }
+
+  private cloneValue(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T;
   }
 }

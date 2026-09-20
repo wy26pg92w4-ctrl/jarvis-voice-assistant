@@ -3,7 +3,8 @@ import type { ReminderStore } from "../../memory/ReminderStore.js";
 import { rankByRelevance } from "../../memory/retrieval.js";
 import type { Skill } from "../Skill.js";
 
-const REMEMBER_TRIGGER = /^merke? dir[:,]?\s*(.+)/i;
+const REMEMBER_TRIGGER = /^merke? dir\b\s*(.*)$/i;
+const LEADING_SEPARATOR = /^[:,]\s*/;
 const KEY_VALUE_SPLIT = /^(.+?)\s+ist\s+(.+)$/i;
 const FORGET_TRIGGER = /^vergiss\s+(.+)/i;
 const RECALL_TRIGGER = /^was wei(ß|ss)t du (?:über|zu)\s+(.+)/i;
@@ -23,7 +24,8 @@ export function createRememberSkill(longTerm: LongTermMemory): Skill {
     canHandle: (input) => REMEMBER_TRIGGER.test(input.trim()),
     handle: async (input) => {
       const match = input.trim().match(REMEMBER_TRIGGER);
-      const statement = match?.[1]?.trim() ?? "";
+      const captured = match?.[1] ?? "";
+      const statement = captured.replace(LEADING_SEPARATOR, "").trim();
       const kv = statement.match(KEY_VALUE_SPLIT);
       const key = kv ? kv[1].trim() : `notiz vom ${new Date().toLocaleString("de-DE")}`;
       const value = kv ? kv[2].trim() : statement;
