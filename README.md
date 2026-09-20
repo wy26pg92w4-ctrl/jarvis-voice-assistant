@@ -164,6 +164,35 @@ unerreichbares oder falsch konfiguriertes REST-Backend lässt den Push
 einfach fehlschlagen (geloggt, nicht geworfen) — Jarvis' Kernfunktionen
 sind davon nie betroffen.
 
+### Wartungs-Skripte für einen bestehenden Vault
+
+Zwei eigenständige Skripte, die du **lokal gegen deinen echten Vault**
+ausführst (diese Session hat keinen Zugriff auf dein Dateisystem — sie
+laufen bei dir, nicht hier). Beide sind standardmäßig Dry-Run und legen vor
+jeder Änderung ein Backup an:
+
+```bash
+# Frontmatter (title/tags/type/created/updated/status) prüfen und ergänzen
+npx tsx scripts/obsidian-frontmatter-audit.ts --vault /pfad/zum/vault
+npx tsx scripts/obsidian-frontmatter-audit.ts --vault /pfad/zum/vault --write
+
+# 3 geplante QuickAdd-Flows ("Neue Notiz", "Neue MOC", "Schneller Gedanke")
+# in eine bestehende QuickAdd-Konfiguration mergen (nicht überschreiben)
+npx tsx scripts/obsidian-quickadd-setup.ts --vault /pfad/zum/vault
+npx tsx scripts/obsidian-quickadd-setup.ts --vault /pfad/zum/vault --write
+```
+
+Frontmatter-Audit: `type` wird aus dem Top-Level-Ordner abgeleitet
+(`10-notizen`→`notiz`, `20-mocs`→`moc`, `00-inbox`→`inbox`, sonst `notiz`),
+fehlender `status` wird auf `draft` gesetzt, `vorlagen/`/`templates/`/
+`.obsidian/` werden nie angefasst. Bestehende Werte werden nie überschrieben
+— nur wirklich fehlende Felder werden ergänzt.
+
+QuickAdd-Setup: setzt voraus, dass das Plugin in Obsidian mindestens einmal
+aktiviert wurde (sonst existiert `data.json` noch nicht); ergänzt fehlende
+Flows anhand des Namens, lässt alles andere in der Datei unangetastet.
+Nach dem Schreiben Obsidian neu laden, damit QuickAdd die neuen Flows zeigt.
+
 ## Tests
 
 ```bash
