@@ -79,6 +79,36 @@ nur die OpenAI-kompatible API von OmniRoute unter `OMNIROUTE_BASE_URL`.
    npm run dev
    ```
 
+### Ein Hermes-Modell (Nous Research) verbinden
+
+Nicht zu verwechseln mit dem separaten "Hermes Agent"-CLI-Tool (ein
+eigenständiger autonomer Terminal-Agent von Nous Research) — hier geht es
+um das *Hermes-Sprachmodell* als Antwort-Engine für Jarvis. Da Jarvis nie
+direkt mit einem Anbieter spricht, sondern immer über OmniRoute, braucht
+das **keine Code-Änderung**, nur Konfiguration:
+
+1. Im OmniRoute-Dashboard (`http://localhost:20128`) unter **Providers**
+   den Provider **Nous Research** hinzufügen und einen API-Key von
+   [portal.nousresearch.com](https://portal.nousresearch.com) eintragen
+   (kostenloser Tier: 50 RPM / 500.000 TPM, keine Kreditkarte nötig).
+2. Verfügbare Hermes-Modell-IDs für die eigene OmniRoute-Instanz prüfen:
+
+   ```bash
+   curl http://localhost:20128/v1/models \
+     -H "Authorization: Bearer $OMNIROUTE_API_KEY" | grep -i hermes
+   ```
+
+3. In `.env` das gewünschte Modell eintragen, z. B.:
+
+   ```bash
+   JARVIS_MODEL=Hermes-4-70B
+   ```
+
+Jarvis holt sich Antworten ab sofort über OmniRoute vom Hermes-Modell statt
+vom bisherigen (per `auto` gewählten) Modell — Brain, Skills und Gedächtnis
+bleiben unverändert, da sie ausschließlich gegen die OpenAI-kompatible
+Schnittstelle von OmniRoute sprechen.
+
 ## Tests
 
 ```bash
